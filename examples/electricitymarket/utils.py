@@ -13,7 +13,7 @@ from ray.rllib.utils.annotations import (
     OverrideToImplementCustomLogic,
     PublicAPI,
 )
-from ray.rllib.agents.callbacks import DefaultCallbacks
+from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2

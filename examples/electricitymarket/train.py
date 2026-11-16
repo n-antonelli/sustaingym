@@ -35,15 +35,16 @@ import os
 import sys
 sys.path.append('..')
 
-import gym
+import gymnasium as gym
 import stable_baselines3 as sb3
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import (
     BaseCallback, CheckpointCallback, EvalCallback, StopTrainingOnNoModelImprovement)
 
-from sustaingym.envs import ElectricityMarketEnv
-from sustaingym.envs.electricitymarket.wrappers import DiscreteActions
+from sustaingym.envs.electricitymarket.noncongested_env import ElectricityMarketEnv
+from sustaingym.envs.electricitymarket.wrappers import DiscreteActionWrapper
 from utils import SaveActionsExperienced
+import shutil
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,7 +58,7 @@ def parse_args() -> argparse.Namespace:
         '-v', '--eval-year', type=int, default=None,
         help='year of environment data for out of dist evaluation')
     parser.add_argument(
-        '-d', '--discrete', action='store_true',
+        '-d', '--discrete', action='store_true', default=False,
         help='whether to use discretized actions')
     parser.add_argument(
         '-a', '--save-actions', action='store_true',
@@ -66,7 +67,7 @@ def parse_args() -> argparse.Namespace:
         '-i', '--intermediate-rewards', action='store_true',
         help='whether to use intermediate rewards')
     parser.add_argument(
-        '-m', '--model-name', type=str, required=True,
+        '-m', '--model-name', type=str, default='PPO',required=True,
         help='type of model. DQN, SAC, PPO, A2C, or DDPG')
     parser.add_argument(
         '-l', '--lr', type=float, required=True,
@@ -94,8 +95,12 @@ def build_save_path(args: argparse.Namespace) -> str:
 
     save_path = f'{args.log_dir}/{args.model_name}{discrete_tag}_{args.year}_g{args.gamma}_lr{args.lr}'
     if os.path.exists(save_path):
-        print(f'save path {save_path} already exists! Aborting')
-        sys.exit()
+        print(f'save path {save_path} already exists! Overwriting...')
+        if os.path.isdir(save_path):
+            shutil.rmtree(save_path)  # Borra la carpeta previa y su contenido
+        else:
+            os.remove(save_path)  # Borra el archivo en caso de ser un archivo individual
+
     return save_path
 
 
@@ -138,7 +143,7 @@ def setup_envs(save_path: str, discrete: bool, save_actions: bool,
     wrapped_env = gym.wrappers.RescaleAction(env, min_action=0, max_action=1)
 
     if discrete:
-        wrapped_env = DiscreteActions(wrapped_env)
+        wrapped_env = DiscreteActionWrapper(wrapped_env)
 
     steps_per_ep = wrapped_env.MAX_STEPS_PER_EPISODE
     eval_freq = eval_episodes * steps_per_ep
@@ -182,7 +187,7 @@ def setup_envs(save_path: str, discrete: bool, save_actions: bool,
         wrapped_eval_env = gym.wrappers.RescaleAction(eval_env, min_action=0, max_action=1)
 
         if discrete:
-            wrapped_eval_env = DiscreteActions(wrapped_eval_env)
+            wrapped_eval_env = DiscreteActionWrapper(wrapped_eval_env)
 
         eval_out_callback = EvalCallback(
             wrapped_eval_env, best_model_save_path=eval_out_save_path,
@@ -213,6 +218,7 @@ def setup_model(model_name: str, env: gym.Env, gamma: float, lr: float, discrete
     model = model_class(
         policy='MultiInputPolicy',
         env=env,
+        device="cpu",
         learning_rate=lr,
         gamma=gamma,
         verbose=1)
@@ -221,6 +227,19 @@ def setup_model(model_name: str, env: gym.Env, gamma: float, lr: float, discrete
 
 def main():
     args = parse_args()
+
+    # --- CONFIGURACIÓN MANUAL DE HIPERPARÁMETROS ---
+    args.log_dir = 'C:\\'  # Año de los datos
+    args.model_name = 'PPO'  # Algoritmo (ej. 'PPO', 'A2C', 'SAC')
+    # args.lr = 0.0001  # Tasa de aprendizaje
+    # args.eval_year = 2021  # (Opcional) Año para evaluación
+    # args.gamma = 0.99  # (Opcional) Factor de descuento
+    # args.discrete = False  # (Opcional) Espacio de acciones discreto o continuo
+    # args.save_actions = True  # (Opcional) Guardar historial de acciones
+    # args.intermediate_rewards = False
+    # args.eval_episodes = 5  # (Opcional) Episodios de evaluación
+    # -----------------------------------------------
+
     save_path = build_save_path(args)
     print(f'Saving model and logs to {save_path}')
 

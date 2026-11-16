@@ -204,7 +204,7 @@ class ElectricityMarketEnv(Env):
         assert (self.bats_base_costs >= 0).all()
 
         # determine the maximum possible cost of energy ($ / MWh)
-        max_cost = 1.25 * max(self.gens_base_costs.max(), self.bats_base_costs.max())
+        max_cost = 1 #1.25 * max(self.gens_base_costs.max(), self.bats_base_costs.max())
 
         # action space is two values for the charging and discharging costs
         self.action_space = spaces.Box(low=0, high=max_cost, shape=(2,), dtype=np.float32)
@@ -300,7 +300,7 @@ class ElectricityMarketEnv(Env):
         """
         return self.count / self.MAX_STEPS_PER_EPISODE
 
-    def reset(self, seed: int | None = None, return_info: bool = False,
+    def reset(self, seed: int | None = None, return_info: bool = True,
               options: dict | None = None
               ) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
         """Initialize or restart an instance of an episode for the BatteryStorageEnv.
@@ -469,7 +469,7 @@ class ElectricityMarketEnv(Env):
             'carbon reward': carbon_reward,
             'terminal cost': terminal_cost,
         }
-        return self.obs, reward, done, info
+        return self.obs, reward, done, False, info
 
     def _calculate_dispatch_without_agent(self, count: int
                                           ) -> tuple[np.ndarray, np.ndarray, float]:

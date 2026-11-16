@@ -89,7 +89,7 @@ class BaseEMAlgorithm:
             episode_carbon_reward = 0.0
 
             # Reset environment
-            obs, info = self.env.reset(seed=seed)
+            obs, info = self.env.reset(seed=seed, return_info=True)
 
             # Reset algorithm
             self.reset()

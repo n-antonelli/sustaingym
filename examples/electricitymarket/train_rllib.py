@@ -43,15 +43,29 @@ import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.normalize import NormalizeObservation
 import pandas as pd
+import os
+
+# Desactivar GPU y variables de entorno
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["RAY_DISABLE_DASHBOARD"] = "1"
+
+# # 1. IMPORTANTE: Cargar cvxpy y osqp PRIMERO
+# import cvxpy
+# import osqp
+
+# 2. Cargar PyTorch y Ray después
+import torch
 import ray
+ray.init( num_gpus=0, ignore_reinit_error=True)
 from ray.rllib.algorithms import a2c, ppo, sac, dqn, ddpg
 from ray.tune.registry import register_env
 from tqdm import tqdm
 
 import sustaingym
 from sustaingym.algorithms.electricitymarket.algorithm import RLLibAlgorithm
-from sustaingym.envs import CongestedElectricityMarketEnv
-from sustaingym.envs.electricitymarket.wrappers import CongestedDiscreteActions, DiscreteActions, FlattenActions
+from sustaingym.envs.electricitymarket.noncongested_env import ElectricityMarketEnv
+from sustaingym.envs.electricitymarket.wrappers import DiscreteActionWrapper, FlattenActions
 
 ENV_NAME = "congested_market"
 TOTAL_STEPS = 250000
@@ -74,7 +88,7 @@ def parse_args() -> argparse.Namespace:
         '-v', '--eval-month', type=int, default=None,
         help='year of environment data for out of dist evaluation')
     parser.add_argument(
-        '-d', '--discrete', action='store_true',
+        '-d', '--discrete', action='store_true', default=False,
         help='whether to use discretized actions')
     # parser.add_argument(
     #     '-a', '--save-actions', action='store_true',
@@ -83,7 +97,7 @@ def parse_args() -> argparse.Namespace:
         '-i', '--intermediate-rewards', action='store_true',
         help='whether to use intermediate rewards')
     parser.add_argument(
-        '-a', '--algo', type=str, required=True,
+        '-a', '--algo', type=str, required=True, default=ppo,
         help='type of model. dqn, sac, ppo, a2c, or ddpg')
     parser.add_argument(
         '-l', '--lr', type=float, required=True,
@@ -153,11 +167,11 @@ def get_env(month: int,
     def _get_env():
         # setting random seeds for comparison's sake
         if month < 10:
-            env = CongestedElectricityMarketEnv(
+            env = ElectricityMarketEnv(
                 month=f'2020-0{month}', seed=month,
                 use_intermediate_rewards=interm_rewards)
         else:
-            env = CongestedElectricityMarketEnv(
+            env = ElectricityMarketEnv(
                 month=f'2020-{month}', seed=month,
                 use_intermediate_rewards=interm_rewards)
 
@@ -169,7 +183,7 @@ def get_env(month: int,
 
         if discrete:
             # wrap environments to have discrete action space
-            wrapped_env = CongestedDiscreteActions(wrapped_env)
+            wrapped_env = ElectricityMarketEnv(wrapped_env)
         else:
             # rescale action spaces to normalized [0,1] interval
             wrapped_env = gym.wrappers.RescaleAction(wrapped_env, min_action=0, max_action=1)

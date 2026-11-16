@@ -7,7 +7,7 @@ sys.path.append('..')
 
 import gymnasium as gym
 from ray.rllib.algorithms import a2c, ppo, sac, dqn, ddpg
-from ray.rllib.agents.callbacks import DefaultCallbacks
+from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.tune.registry import register_env
 
 from sustaingym.envs import CongestedElectricityMarketEnv
